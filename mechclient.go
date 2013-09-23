@@ -20,6 +20,7 @@ type Body struct {
 	FormValues url.Values
 }
 
+// Initalize mechclient, adding cookiejar to client for storing
 func New() *MechClient {
 	j, err := cookiejar.New(nil)
 	if err != nil {
@@ -32,6 +33,7 @@ func New() *MechClient {
 	return m
 }
 
+// Adds http authentication to a url specified
 func (m *MechClient) AddAuth(dom, user, pass string) {
 	u, err := url.Parse(dom)
 	if err != nil {
@@ -41,6 +43,7 @@ func (m *MechClient) AddAuth(dom, user, pass string) {
 	m.auth = u
 }
 
+// Wrapper for HTTP Get method, appends url string to history array
 func (m *MechClient) Get(address string) (resp *http.Response, err error) {
 	u := m.addAuthTo(address)
 	m.history = append(m.history, address)
@@ -70,8 +73,8 @@ func (m *MechClient) addAuthTo(address string) string {
 	}
 }
 
-// Produces a string array of the full history of the client, starting with the last visited
-// url. Does not include authorization if added.
+// Produces a string array of the full history of the client, starting with the first visited
+// url. Does not include authorization if used.
 func (m *MechClient) History() []string {
 	return m.history
 }
@@ -80,14 +83,14 @@ func (m *MechClient) Cookies(u *url.URL) (cookies []*http.Cookie) {
 	return m.client.Jar.Cookies(u)
 }
 
-// Parses the response to find links and forms
-func (m *MechClient) Parse(res *http.Response) Body {
-	b := Body{client: m}
+// Parses the response to find links and forms, creates a wrapper for Goquery
+func (m *MechClient) Parse(res *http.Response) *Body {
+	b := &Body{client: m}
 	b.document, _ = goquery.NewDocumentFromResponse(res)
 	return b
 }
 
-// Adds authorization to address, then send http request PostForm
+// helper for Body.PostForm method
 func (m *MechClient) postForm(address string, val url.Values) (resp *http.Response, err error) {
 	u := m.addAuthTo(address)
 	m.history = append(m.history, address)
