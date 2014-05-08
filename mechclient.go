@@ -1,6 +1,12 @@
+// Basic Implementation of Mechanize for Go. Wraps http.Client
+// and CookieJar and utilizes goquery (http://github.com/PuerkitoBio/goquery)
+// to automate interaction within websites.
+//
+
 package mechclient
 
 import (
+	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"net/http"
 	"net/http/cookiejar"
@@ -15,7 +21,7 @@ type MechClient struct {
 
 type Body struct {
 	client     *MechClient
-	document   *goquery.Document
+	Document   *goquery.Document
 	selection  *goquery.Selection
 	FormValues url.Values
 }
@@ -44,10 +50,15 @@ func (m *MechClient) AddAuth(dom, user, pass string) {
 }
 
 // Wrapper for HTTP Get method, appends url string to history array
-func (m *MechClient) Get(address string) (resp *http.Response, err error) {
+func (m *MechClient) Get(address string) *Body {
 	u := m.addAuthTo(address)
 	m.history = append(m.history, address)
-	return m.client.Get(u)
+	resp, err := m.client.Get(u)
+	if err != nil {
+		panic(err)
+	}
+	b := m.parse(resp)
+	return b
 }
 
 //adds any authorization added from AddAuth to url before sending http request
@@ -79,14 +90,15 @@ func (m *MechClient) History() []string {
 	return m.history
 }
 
+// Returns cookies from designate URL value
 func (m *MechClient) Cookies(u *url.URL) (cookies []*http.Cookie) {
 	return m.client.Jar.Cookies(u)
 }
 
 // Parses the response to find links and forms, creates a wrapper for Goquery
-func (m *MechClient) Parse(res *http.Response) *Body {
+func (m *MechClient) parse(res *http.Response) *Body {
 	b := &Body{client: m}
-	b.document, _ = goquery.NewDocumentFromResponse(res)
+	b.Document, _ = goquery.NewDocumentFromResponse(res)
 	return b
 }
 
@@ -95,4 +107,13 @@ func (m *MechClient) postForm(address string, val url.Values) (resp *http.Respon
 	u := m.addAuthTo(address)
 	m.history = append(m.history, address)
 	return m.client.PostForm(u, val)
+}
+
+// helper method for Body.LinksWith and Body.FormWith
+func (b *Body) find(selector string) *goquery.Selection {
+	if b.Document != nil {
+		return b.Document.Find(selector)
+	} else {
+		panic(fmt.Sprint("Response has not been parsed yet!"))
+	}
 }

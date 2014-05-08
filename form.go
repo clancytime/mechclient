@@ -3,26 +3,15 @@ package mechclient
 import (
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
-	"net/http"
 	"net/url"
 )
 
-// Helper method to find all available forms on parsed page
-func (b *Body) forms() *goquery.Selection {
-	if b.document != nil {
-		return b.document.Find("form")
-	} else {
-		panic(fmt.Sprint("Response has not been parsed yet!"))
-	}
-}
-
 // Helper method for FormWith. Utilizes goquery FilterFunction to find forms within
-// parsed page whose meta-info matches the descriptors. Name and action are the most
-// available options, may add more based on need.
+// parsed page whose meta-info matches the descriptors.
 func (b *Body) formWith(selector, value string) *goquery.Selection {
 	switch selector {
-	case "name", "action":
-		forms := b.forms()
+	case "name", "action", "id":
+		forms := b.find("form")
 		return forms.FilterFunction(func(i int, s *goquery.Selection) bool {
 			for _, val := range s.Nodes[0].Attr {
 				if val.Key == selector {
@@ -94,9 +83,9 @@ func (b *Body) formAddress() string {
 // Wrapper for HTTP PostForm method, either what was selected from FormWith or the first available
 // form on the page. If val is nil, uses default values found from that form, or values
 // added/changed by setting the value i.e. b.FormValues.Set in main function.
-func (b *Body) PostForm(val url.Values) (resp *http.Response, err error) {
+func (b *Body) PostForm(val url.Values) *Body {
 	if b.selection == nil {
-		b.selection = b.forms().First()
+		b.selection = b.find("form").First()
 		if len(b.selection.Nodes) == 0 {
 			panic(fmt.Sprint("There were no forms found on this page"))
 		}
@@ -114,5 +103,10 @@ func (b *Body) PostForm(val url.Values) (resp *http.Response, err error) {
 			}
 		}
 	}
-	return b.client.postForm(b.formAddress(), b.FormValues)
+	resp, err := b.client.postForm(b.formAddress(), b.FormValues)
+	if err != nil {
+		panic(err)
+	}
+	newBody := b.client.parse(resp)
+	return newBody
 }
