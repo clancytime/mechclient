@@ -45,16 +45,19 @@ func (b *Body) FormWith(selector, value string) *Body {
 // Gets the input values of the form selected
 func (b *Body) getValues() url.Values {
 	inputVals := url.Values{}
-	inputs := b.selection.Find("input")
-	for _, input := range inputs.Nodes {
-		var inputName string
-		for _, name := range input.Attr {
-			if name.Key == "name" {
-				inputName = name.Val
-				inputVals.Add(name.Val, "")
-			}
-			if name.Key == "value" {
-				inputVals.Set(inputName, name.Val)
+	input_types := [3]string{"input", "select", "textarea"}
+	for _, input_type := range input_types {
+		inputs := b.selection.Find(input_type)
+		for _, input := range inputs.Nodes {
+			var inputName string
+			for _, name := range input.Attr {
+				if name.Key == "name" {
+					inputName = name.Val
+					inputVals.Add(name.Val, "")
+				}
+				if name.Key == "value" {
+					inputVals.Set(inputName, name.Val)
+				}
 			}
 		}
 	}
@@ -72,10 +75,12 @@ func (b *Body) formAddress() string {
 	}
 	historyLength := len(b.client.history)
 	u, _ := url.Parse(b.client.history[historyLength-1])
-	if string(path[0]) == "/" {
-		u.Path = path
-	} else {
-		u.Path = "/" + path
+	if len(path) > 0 {
+		if string(path[0]) == "/" {
+			u.Path = path
+		} else {
+			u.Path = "/" + path
+		}
 	}
 	return u.String()
 }
